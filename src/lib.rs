@@ -2,6 +2,8 @@ use std::collections::{HashMap, BinaryHeap, HashSet};
 use std::cmp::Ordering;
 use std::fmt::Debug;
 
+use rand::distributions::{Exp, Distribution};
+
 use ordered_float::OrderedFloat;
 
 pub type State = HashMap<Place, PlaceState>;
@@ -102,10 +104,8 @@ impl Simulation {
         if event.enabled(&enablement_state) {
             let rate_state: Vec<_> = event.rate_inputs().iter().map(|p| self.state[p]).collect();
             let rate = event.hazard_rate(&rate_state);
-            //TODO: treating hazard as an exponential distribution and the time to next firing
-            //as it's mean. That's probably wrong somehow
             let current_time: f64 = self.current_time.into();
-            let firing_time = rate.powf(-1.0) + current_time;
+            let firing_time =  Exp::new(rate).sample(&mut rand::thread_rng()) + current_time;
             self.upcoming_firings.push(ScheduledFiring(firing_time.into(), event_idx, self.valid_firing[event_idx]));
         }
     }
