@@ -8,7 +8,7 @@ use ordered_float::OrderedFloat;
 
 pub type State = HashMap<Place, PlaceState>;
 pub type Place = usize;
-pub type Time = OrderedFloat<f64>;
+pub type Time = f64;
 
 #[derive(Debug, Copy, Clone)]
 pub struct PlaceState {
@@ -47,7 +47,7 @@ struct ScheduledFiring(Time, usize, usize);
 impl Ord for ScheduledFiring {
     fn cmp(&self, other: &Self) -> Ordering {
         // Flip order to make `upcoming_firings` behave as a min heap
-        other.0.cmp(&self.0)
+        OrderedFloat(other.0).cmp(&OrderedFloat(self.0))
     }
 }
 
@@ -89,7 +89,7 @@ impl Simulation {
         let state = places.iter().map(|p| (*p, PlaceState { tokens: 0 })).collect();
         Self {
             state,
-            current_time: 0.0.into(),
+            current_time: 0.0,
             valid_firing: events.iter().map(|_| 0).collect(),
             events: events,
             dependencies,
@@ -104,9 +104,8 @@ impl Simulation {
         if event.enabled(&enablement_state) {
             let rate_state: Vec<_> = event.rate_inputs().iter().map(|p| self.state[p]).collect();
             let rate = event.hazard_rate(&rate_state);
-            let current_time: f64 = self.current_time.into();
-            let firing_time =  Exp::new(rate).sample(&mut rand::thread_rng()) + current_time;
-            self.upcoming_firings.push(ScheduledFiring(firing_time.into(), event_idx, self.valid_firing[event_idx]));
+            let firing_time =  Exp::new(rate).sample(&mut rand::thread_rng()) + self.current_time;
+            self.upcoming_firings.push(ScheduledFiring(firing_time, event_idx, self.valid_firing[event_idx]));
         }
     }
 
